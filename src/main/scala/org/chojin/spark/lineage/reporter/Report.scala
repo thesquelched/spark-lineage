@@ -2,8 +2,13 @@ package org.chojin.spark.lineage.reporter
 
 import org.chojin.spark.lineage.inputs.Input
 import org.chojin.spark.lineage.outputs.Output
+import org.json4s._
+import org.json4s.jackson.Serialization
+import org.json4s.jackson.Serialization.write
 
 case class Report(output: Output, inputs: Map[String, List[Input]]) {
+  implicit val formats = Serialization.formats(NoTypeHints)
+
   override def equals(other: Any): Boolean = other match {
     case Report(otherOutput, otherInput) => (
       output == otherOutput
@@ -23,5 +28,9 @@ case class Report(output: Output, inputs: Map[String, List[Input]]) {
         |  inputs:
         |$inputsStr
         |""".stripMargin
+  }
+
+  def toJson(): String = {
+    write(this)
   }
 }

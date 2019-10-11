@@ -73,7 +73,7 @@ class SparkSqlLineageListener(reporter: Reporter) extends QueryExecutionListener
           attr => attr -> findSource(attr, c.query)
         }.map({ case (field, rawInputs) => {
           val inputs = rawInputs.groupBy {
-            case HiveInput(name, _) => (HiveInput, name)
+            case HiveInput(name, _, _) => (HiveInput, name)
           }.map { case (key, value) => {
             key match {
               case (HiveInput, table) =>

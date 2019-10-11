@@ -4,15 +4,13 @@ import java.io.File
 import java.nio.file.{Files, Path}
 
 import org.apache.commons.io.FileUtils
-import org.apache.spark.sql.execution.datasources.parquet.ParquetFileFormat
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StringType
-import org.apache.spark.sql.{SQLContext, SQLImplicits, SparkSession}
 import org.chojin.spark.lineage.inputs.HiveInput
 import org.chojin.spark.lineage.outputs.FsOutput
 import org.chojin.spark.lineage.reporter.{LocalReporter, Report}
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FunSuite, Inside, Matchers}
-import org.apache.spark.sql.functions._
-import org.scalatest.matchers.{MatchResult, Matcher}
+import org.scalatest._
 
 class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with BeforeAndAfterEach with Matchers with Inside {
   private var spark: SparkSession = _
