@@ -15,8 +15,8 @@ import org.apache.spark.sql.functions._
 
 class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with BeforeAndAfterEach {
   private var spark: SparkSession = _
-  private var tempDir: Path = _
 
+  private val tempDir: Path = Files.createTempDirectory("listener-test-")
   private val reporter: LocalReporter = new LocalReporter()
   private val listener: SparkSqlLineageListener = new SparkSqlLineageListener(reporter)
 
@@ -30,6 +30,34 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
         .enableHiveSupport()
         .getOrCreate()
 
+    spark.sql("create database test")
+
+    Seq("foo", "bar", "baz").foreach { name =>
+      val path = tempDir.resolve(s"test/$name/day=2019-10-01/data.csv")
+      path.getParent.toFile.mkdirs()
+
+      Files.write(path, "1,a,10\n2,b,20\n3,c,30\n".getBytes())
+
+      spark.sql(
+        s"""
+           |CREATE EXTERNAL TABLE test.$name (
+           | pk BIGINT,
+           | name STRING,
+           | value BIGINT
+           |)
+           |PARTITIONED BY (day STRING)
+           |ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+           |STORED AS TEXTFILE
+           |LOCATION '${path.getParent.getParent.toString}'
+           |""".stripMargin)
+      spark.sql(
+        s"""
+           |ALTER TABLE test.$name
+           |ADD PARTITION (day='2019-10-01')
+           |LOCATION '${path.getParent.toString}'
+           |""".stripMargin)
+    }
+
     spark.listenerManager.register(listener)
   }
 
@@ -37,25 +65,23 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
     super.beforeEach()
 
     reporter.clear()
-    tempDir = Files.createTempDirectory("listener-test-")
   }
 
   override protected def afterEach(): Unit = {
-    FileUtils.deleteDirectory(tempDir.toFile)
-    tempDir = null
+    FileUtils.deleteDirectory(tempDir.resolve("test.parquet").toFile)
 
     super.afterEach()
   }
 
   override protected def afterAll(): Unit = {
+    spark.listenerManager.unregister(listener)
     spark.sessionState.catalog.reset()
     spark.stop()
 
     SparkSession.clearActiveSession()
     SparkSession.clearDefaultSession()
 
-    spark = null
-
+    FileUtils.deleteDirectory(tempDir.toFile)
     FileUtils.deleteDirectory(new File("spark-warehouse"))
 
     super.afterAll()
@@ -65,58 +91,49 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
     val ss = spark
     import ss.implicits._
 
-    val csvFile = tempDir.resolve("test/foo/test.csv")
-    csvFile.getParent.toFile.mkdirs()
-
-    Files.write(csvFile, "a,1\nb,2\nc,3\n".getBytes())
-
-    spark.sql("create database test")
-    spark.sql(
-      s"""
-         |create external table test.foo (
-         | name string,
-         | value int
-         |)
-         |row format delimited fields terminated by ','
-         |stored as textfile
-         |location '${csvFile.getParent.toString}'
-         |""".stripMargin)
-
     val outputPath = tempDir.resolve("test.parquet").toString
+
     spark.table("test.foo")
-      .select('name, concat('name, 'value.cast(StringType)) as 'new_value)
+      .select('pk, concat('name, 'value.cast(StringType)) as 'new_value)
       .write
       .parquet(outputPath)
 
-    assert(reporter.getReports().toList == List(Report(
+    val expected = Report(
       FsOutput(s"file:$outputPath", "Parquet"),
-      Map("name" -> List(HiveInput("test.foo", List("name"))),
-          "new_value" -> List(HiveInput("test.foo", List("name", "value")))))))
+      Map(
+        "pk" -> List(HiveInput("test.foo", List("pk"))),
+        "new_value" -> List(HiveInput("test.foo", List("name", "value")))))
+
+    assert(reporter.getReports() == List(expected))
+  }
+
+  test("hive filter") {
+    val ss = spark
+    import ss.implicits._
+
+    val outputPath = tempDir.resolve("test.parquet").toString
+
+    spark.table("test.foo")
+      .filter('name =!= "c")
+      .select('pk, concat('pk, 'value.cast(StringType)) as 'new_value)
+      .write
+      .parquet(outputPath)
+
+    val expected = Report(
+      FsOutput(s"file:$outputPath", "Parquet"),
+      Map(
+        "" -> List(HiveInput("test.foo", List("name"))),
+        "pk" -> List(HiveInput("test.foo", List("pk"))),
+        "new_value" -> List(HiveInput("test.foo", List("pk", "value")))))
+
+    assert(reporter.getReports() == List(expected))
   }
 
   test("hive aggregate") {
     val ss = spark
     import ss.implicits._
 
-    val csvFile = tempDir.resolve("test/foo/test.csv")
-    csvFile.getParent.toFile.mkdirs()
-
-    Files.write(csvFile, "a,1\nb,2\nc,3\n".getBytes())
-
-    spark.sql("create database test")
-    spark.sql(
-      s"""
-        |create external table test.foo (
-        | name string,
-        | value int
-        |)
-        |row format delimited fields terminated by ','
-        |stored as textfile
-        |location '${csvFile.getParent.toString}'
-        |""".stripMargin)
-
     spark.table("test.foo")
-      .filter('name =!= "c")
       .groupBy("name")
       .count
       .write

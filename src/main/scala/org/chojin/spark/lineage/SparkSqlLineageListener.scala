@@ -3,7 +3,7 @@ package org.chojin.spark.lineage
 import grizzled.slf4j.Logger
 import org.apache.spark.sql.catalyst.catalog.HiveTableRelation
 import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference, NamedExpression}
-import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, LogicalPlan, Project, SubqueryAlias, Union}
+import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, Filter, LogicalPlan, Project, SubqueryAlias, Union}
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.execution.datasources.InsertIntoHadoopFsRelationCommand
 import org.apache.spark.sql.util.QueryExecutionListener
@@ -14,7 +14,7 @@ import org.chojin.spark.lineage.reporter.{Report, Reporter}
 class SparkSqlLineageListener(reporter: Reporter) extends QueryExecutionListener {
   private lazy val LOGGER = Logger[this.type]
 
-  def getExprSource(expr: NamedExpression, plan: LogicalPlan): Iterable[HiveInput] = {
+  def getExprSource(expr: NamedExpression, plan: LogicalPlan): Seq[(String, String)] = {
     expr.collect{
       case attr: AttributeReference => {
         plan.collect {
@@ -22,10 +22,11 @@ class SparkSqlLineageListener(reporter: Reporter) extends QueryExecutionListener
         }.flatten
       }
       case _ => Seq()
-    }.flatten.groupBy({ case (table, _) => table}).values.map({x => {
-      val (tables, columns) = x.unzip
-      HiveInput(tables.head, columns.toList)
-    }})
+    }.flatten
+//      .flatten.groupBy({ case (table, _) => table}).values.map({x => {
+//      val (tables, columns) = x.unzip
+//      HiveInput(tables.head, columns.toList)
+//    }})
   }
   override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
     LOGGER.info(s"Logical plan: ${qe.logical}")
@@ -34,18 +35,30 @@ class SparkSqlLineageListener(reporter: Reporter) extends QueryExecutionListener
       case c: InsertIntoHadoopFsRelationCommand => {
         val output = FsOutput(c.outputPath.toString, c.fileFormat.toString)
 
-        c.query.collect {
+        val inputs = c.query.collect {
           case q: Project => {
-            val inputs = Map(q.projectList.map({expr => expr.name -> getExprSource(expr, q.child).toList}): _*)
-
-            Report(output, inputs)
+            Map(q.projectList.map({expr => expr.name -> getExprSource(expr, q.child).toList}): _*)
+          }
+          case f: Filter => {
+            Map("" -> f.condition.collect({ case e: NamedExpression => getExprSource(e, f.child) }).flatten)
           }
           //        case a: Aggregate => {
           //        }
           //        case r: LogicalRelation
-        }
+        }.flatten.groupBy({ case(column, _) => column }).values.map({ result => {
+                val (columns, allInputs) = result.unzip
+
+                val mergedInputs = allInputs.flatten.groupBy({ case (table, _) => table}).values.map({x =>
+                  val (tables, columns) = x.unzip
+                  HiveInput(tables.head, columns.toList)
+                })
+
+                columns.head -> mergedInputs.toList
+        }})
+
+        Report(output, Map(inputs.toSeq: _*))
       }
-    }.flatten.foreach(reporter.report)
+    }.foreach(reporter.report)
   }
 
   override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {
