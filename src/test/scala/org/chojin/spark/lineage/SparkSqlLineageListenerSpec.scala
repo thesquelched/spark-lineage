@@ -139,7 +139,7 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
     val expected = Report(
       FsOutput(s"file:$outputPath", "Parquet"),
       Map(
-        "count" -> List(HiveInput("test.foo", Set("*"))),
+        "count" -> List(HiveInput("test.foo", Set("name"))),
         "name" -> List(HiveInput("test.foo", Set("name")))))
 
     reporter.getReports() should contain theSameElementsInOrderAs List(expected)
