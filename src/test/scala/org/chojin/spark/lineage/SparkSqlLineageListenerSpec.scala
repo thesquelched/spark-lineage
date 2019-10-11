@@ -10,15 +10,17 @@ import org.apache.spark.sql.{SQLContext, SQLImplicits, SparkSession}
 import org.chojin.spark.lineage.inputs.HiveInput
 import org.chojin.spark.lineage.outputs.FsOutput
 import org.chojin.spark.lineage.reporter.{LocalReporter, Report}
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FunSuite}
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FunSuite, Inside, Matchers}
 import org.apache.spark.sql.functions._
+import org.scalatest.matchers.{MatchResult, Matcher}
 
-class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with BeforeAndAfterEach {
+class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with BeforeAndAfterEach with Matchers with Inside {
   private var spark: SparkSession = _
 
   private val tempDir: Path = Files.createTempDirectory("listener-test-")
   private val reporter: LocalReporter = new LocalReporter()
   private val listener: SparkSqlLineageListener = new SparkSqlLineageListener(reporter)
+  private val outputPath = tempDir.resolve("test.parquet")
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -68,7 +70,7 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
   }
 
   override protected def afterEach(): Unit = {
-    FileUtils.deleteDirectory(tempDir.resolve("test.parquet").toFile)
+    FileUtils.deleteDirectory(outputPath.toFile)
 
     super.afterEach()
   }
@@ -91,42 +93,37 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
     val ss = spark
     import ss.implicits._
 
-    val outputPath = tempDir.resolve("test.parquet").toString
-
     spark.table("test.foo")
       .select('pk, concat('name, 'value.cast(StringType)) as 'new_value)
       .write
-      .parquet(outputPath)
+      .parquet(outputPath.toString)
 
     val expected = Report(
       FsOutput(s"file:$outputPath", "Parquet"),
       Map(
-        "pk" -> List(HiveInput("test.foo", List("pk"))),
-        "new_value" -> List(HiveInput("test.foo", List("name", "value")))))
+        "pk" -> List(HiveInput("test.foo", Set("pk"))),
+        "new_value" -> List(HiveInput("test.foo", Set("name", "value")))))
 
-    assert(reporter.getReports() == List(expected))
+    reporter.getReports() should contain theSameElementsInOrderAs List(expected)
   }
 
   test("hive filter") {
     val ss = spark
     import ss.implicits._
 
-    val outputPath = tempDir.resolve("test.parquet").toString
-
     spark.table("test.foo")
       .filter('name =!= "c")
       .select('pk, concat('pk, 'value.cast(StringType)) as 'new_value)
       .write
-      .parquet(outputPath)
+      .parquet(outputPath.toString)
 
     val expected = Report(
       FsOutput(s"file:$outputPath", "Parquet"),
       Map(
-        "" -> List(HiveInput("test.foo", List("name"))),
-        "pk" -> List(HiveInput("test.foo", List("pk"))),
-        "new_value" -> List(HiveInput("test.foo", List("pk", "value")))))
+        "pk" -> List(HiveInput("test.foo", Set("pk", "name"))),
+        "new_value" -> List(HiveInput("test.foo", Set("pk", "value", "name")))))
 
-    assert(reporter.getReports() == List(expected))
+    reporter.getReports() should contain theSameElementsInOrderAs List(expected)
   }
 
   test("hive aggregate") {
@@ -134,75 +131,40 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
     import ss.implicits._
 
     spark.table("test.foo")
-      .groupBy("name")
+      .groupBy('name)
       .count
       .write
-      .parquet(tempDir.resolve("test.parquet").toString)
+      .parquet(outputPath.toString)
 
-    assert(reporter.getReports().size == 1)
+    val expected = Report(
+      FsOutput(s"file:$outputPath", "Parquet"),
+      Map(
+        "count" -> List(HiveInput("test.foo", Set("*"))),
+        "name" -> List(HiveInput("test.foo", Set("name")))))
+
+    reporter.getReports() should contain theSameElementsInOrderAs List(expected)
   }
 
-  test("hive table join") {
+  test("hive join") {
     val ss = spark
     import ss.implicits._
-
-    val fooFile = tempDir.resolve("test/foo/data.csv")
-    val barFile = tempDir.resolve("test/bar/data.csv")
-    fooFile.getParent.toFile.mkdirs()
-    barFile.getParent.toFile.mkdirs()
-
-    Files.write(fooFile, "a,1\nb,2\nc,3\n".getBytes())
-    Files.write(barFile, "a,10\nb,20\nc,30\n".getBytes())
-
-    spark.sql("create database test")
-    spark.sql(
-      s"""
-         |create external table test.foo (
-         | name string,
-         | value int
-         |)
-         |row format delimited fields terminated by ','
-         |stored as textfile
-         |location '${fooFile.getParent}'
-         |""".stripMargin)
-    spark.sql(
-      s"""
-         |create external table test.bar (
-         | name string,
-         | value int
-         |)
-         |row format delimited fields terminated by ','
-         |stored as textfile
-         |location '${barFile.getParent}'
-         |""".stripMargin)
 
     val foo = spark.table("test.foo")
     val bar = spark.table("test.bar")
 
-    foo
-      .join(bar, Seq("name"))
-      .select(foo.col("*"), bar.col("value") as 'barvalue)
+
+    foo.join(bar, Seq("pk"))
+      .select(foo.col("*"), bar.col("name") as 'bar_name)
       .write
-      .parquet(tempDir.resolve("test.parquet").toString)
-  }
+      .parquet(outputPath.toString)
 
-  test("csv file") {
-    val ss = spark
-    import ss.implicits._
+    val expected = Report(
+      FsOutput(s"file:$outputPath", "Parquet"),
+      Map(
+        "pk" -> List(HiveInput("test.foo", Set("pk")), HiveInput("test.bar", Set("pk"))),
+        "name" -> List(HiveInput("test.foo", Set("pk", "name")), HiveInput("test.bar", Set("pk", "value"))),
+        "name" -> List(HiveInput("test.foo", Set("name")))))
 
-    val csvFile = tempDir.resolve("test/foo/test.csv")
-    csvFile.getParent.toFile.mkdirs()
-
-    Files.write(csvFile, "a,1\nb,2\nc,3\n".getBytes())
-
-    spark
-      .read
-      .schema("name string, value int")
-      .csv(csvFile.toAbsolutePath.toString)
-      .filter('name =!= "c")
-      .groupBy("name")
-      .count
-      .write
-      .parquet(tempDir.resolve("test.parquet").toString)
+    reporter.getReports() should contain theSameElementsInOrderAs List(expected)
   }
 }
