@@ -65,10 +65,14 @@ class SparkSqlLineageListener(reporter: Reporter) extends QueryExecutionListener
   def process(qe: QueryExecution) = {
     qe.logical.collect {
       case c: InsertIntoHadoopFsRelationCommand => {
+        LOGGER.info(s"Outputs = ${c.query.output}")
         val output = FsOutput(c.outputPath.toString, c.fileFormat.toString)
         val inputs = getInputMapping(c.query)
 
-        Report(output, Map(inputs.toSeq: _*))
+        val report = Report(output, Map(inputs.toSeq: _*))
+        LOGGER.info(s"Generated report: ${report.prettyPrint}")
+
+        report
       }
     }
   }

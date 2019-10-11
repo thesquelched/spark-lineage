@@ -149,7 +149,7 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
     val ss = spark
     import ss.implicits._
 
-    val foo = spark.table("test.foo")
+    val foo = spark.table("test.foo").select('pk, 'name, 'value)
     val bar = spark.table("test.bar")
 
 
@@ -162,8 +162,9 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
       FsOutput(s"file:$outputPath", "Parquet"),
       Map(
         "pk" -> List(HiveInput("test.foo", Set("pk")), HiveInput("test.bar", Set("pk"))),
-        "name" -> List(HiveInput("test.foo", Set("pk", "name")), HiveInput("test.bar", Set("pk", "value"))),
-        "name" -> List(HiveInput("test.foo", Set("name")))))
+        "name" -> List(HiveInput("test.foo", Set("pk", "name")), HiveInput("test.bar", Set("pk"))),
+        "value" -> List(HiveInput("test.foo", Set("pk", "value")), HiveInput("test.bar", Set("pk"))),
+        "bar_name" -> List(HiveInput("test.foo", Set("pk")), HiveInput("test.bar", Set("pk", "name")))))
 
     reporter.getReports() should contain theSameElementsInOrderAs List(expected)
   }
