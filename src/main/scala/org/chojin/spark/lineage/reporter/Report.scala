@@ -5,7 +5,10 @@ import org.chojin.spark.lineage.outputs.Output
 
 case class Report(output: Output, inputs: Map[String, List[Input]]) {
   override def equals(other: Any): Boolean = other match {
-    case Report(otherOutput, otherInput) => output == otherOutput && inputs.toSet == otherInput.toSet
+    case Report(otherOutput, otherInput) => (
+      output == otherOutput
+        && inputs.mapValues(_.toSet).toSet == otherInput.mapValues(_.toSet).toSet
+      )
     case _ => false
   }
 
