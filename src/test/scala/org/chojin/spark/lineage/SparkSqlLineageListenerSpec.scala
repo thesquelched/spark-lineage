@@ -9,14 +9,14 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StringType
 import org.chojin.spark.lineage.inputs.HiveInput
 import org.chojin.spark.lineage.outputs.FsOutput
-import org.chojin.spark.lineage.reporter.{LocalReporter, Report}
+import org.chojin.spark.lineage.reporter.{InMemoryReporter, Report}
 import org.scalatest._
 
 class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with BeforeAndAfterEach with Matchers with Inside {
   private var spark: SparkSession = _
 
   private val tempDir: Path = Files.createTempDirectory("listener-test-")
-  private val reporter: LocalReporter = new LocalReporter()
+  private val reporter: InMemoryReporter = new InMemoryReporter()
   private val listener: SparkSqlLineageListener = new SparkSqlLineageListener(reporter)
   private val outputPath = tempDir.resolve("test.parquet")
 

@@ -92,10 +92,9 @@ class SparkSqlLineageListener(reporter: Reporter) extends QueryExecutionListener
   }
 
   override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
-    LOGGER.info(s"Logical plan: ${qe.logical}")
-    //process(qe).foreach(reporter.report)
+    LOGGER.debug(s"Logical plan: ${qe.logical}")
     run(qe.logical).foreach(report => {
-      LOGGER.info(s"Produced report: ${report.prettyPrint}")
+      LOGGER.debug(s"Produced report: ${report.prettyPrint}")
       reporter.report(report)
     })
 
