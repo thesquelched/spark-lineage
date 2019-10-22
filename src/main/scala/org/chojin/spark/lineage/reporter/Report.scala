@@ -6,12 +6,13 @@ import org.json4s._
 import org.json4s.jackson.Serialization
 import org.json4s.jackson.Serialization.write
 
-case class Report(output: Output, inputs: Map[String, List[Input]]) {
+case class Report(metadata: Metadata, output: Output, inputs: Map[String, List[Input]]) {
   implicit val formats = Serialization.formats(NoTypeHints)
 
   override def equals(other: Any): Boolean = other match {
-    case Report(otherOutput, otherInput) => (
-      output == otherOutput
+    case Report(otherMeta, otherOutput, otherInput) => (
+      metadata == otherMeta
+        && output == otherOutput
         && inputs.mapValues(_.toSet).toSet == otherInput.mapValues(_.toSet).toSet
       )
     case _ => false
@@ -24,6 +25,7 @@ case class Report(output: Output, inputs: Map[String, List[Input]]) {
     }.mkString("\n")
 
     s"""|Report(
+        |  metadata: $metadata,
         |  output: $output,
         |  inputs:
         |$inputsStr

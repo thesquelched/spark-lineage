@@ -11,7 +11,7 @@ import org.apache.spark.sql.execution.datasources.{InsertIntoHadoopFsRelationCom
 import org.apache.spark.sql.util.QueryExecutionListener
 import org.chojin.spark.lineage.inputs.{HiveInput, Input}
 import org.chojin.spark.lineage.outputs.FsOutput
-import org.chojin.spark.lineage.reporter.{Report, Reporter}
+import org.chojin.spark.lineage.reporter.{Metadata, Report, Reporter}
 
 class SparkSqlLineageListener(reporter: Reporter) extends QueryExecutionListener {
   private lazy val LOGGER = Logger[this.type]
@@ -72,8 +72,8 @@ class SparkSqlLineageListener(reporter: Reporter) extends QueryExecutionListener
     }.flatten
   }
 
-  def run(plan: LogicalPlan): Option[Report] = {
-    plan.collectFirst {
+  def run(qe: QueryExecution): Option[Report] = {
+    qe.logical.collectFirst {
       case c: InsertIntoHadoopFsRelationCommand => {
         val output = FsOutput(c.outputPath.toString, c.fileFormat.toString)
         val inputs = c.query.output.map {
@@ -95,14 +95,17 @@ class SparkSqlLineageListener(reporter: Reporter) extends QueryExecutionListener
 
         LOGGER.info(s"Inputs: $inputs")
 
-        Report(output, Map(inputs: _*))
+        val metadata = Metadata(qe.sparkSession.sparkContext.appName)
+
+        Report(metadata, output, Map(inputs: _*))
       }
     }
   }
 
   override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
+    qe.sparkSession.sparkContext.appName
     LOGGER.debug(s"Logical plan: ${qe.logical}")
-    run(qe.logical).foreach(report => {
+    run(qe).foreach(report => {
       LOGGER.debug(s"Produced report: ${report.prettyPrint}")
       reporter.report(report)
     })
