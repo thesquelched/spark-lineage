@@ -1,8 +1,10 @@
 package org.chojin.spark.lineage.reporter
 
+import org.chojin.spark.lineage.report.Report
+
 import scala.collection.mutable.ListBuffer
 
-class InMemoryReporter extends Reporter {
+case class InMemoryReporter(compression: Option[String]) extends Reporter {
   private val reports = new ListBuffer[Report]()
 
   override def report(report: Report): Unit = {

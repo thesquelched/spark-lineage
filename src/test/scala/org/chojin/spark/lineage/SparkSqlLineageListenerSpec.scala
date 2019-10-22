@@ -9,14 +9,15 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StringType
 import org.chojin.spark.lineage.inputs.HiveInput
 import org.chojin.spark.lineage.outputs.FsOutput
-import org.chojin.spark.lineage.reporter.{InMemoryReporter, Report}
+import org.chojin.spark.lineage.report.{Metadata, Report}
+import org.chojin.spark.lineage.reporter.InMemoryReporter
 import org.scalatest._
 
 class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with BeforeAndAfterEach with Matchers with Inside {
   private var spark: SparkSession = _
 
   private val tempDir: Path = Files.createTempDirectory("listener-test-")
-  private val reporter: InMemoryReporter = new InMemoryReporter()
+  private val reporter: InMemoryReporter = InMemoryReporter(compression = None)
   private val listener: SparkSqlLineageListener = new SparkSqlLineageListener(reporter)
   private val outputPath = tempDir.resolve("test.parquet")
 
@@ -26,6 +27,7 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
     spark = SparkSession
         .builder()
         .master("local")
+        .appName("test")
         .config("spark.ui.enabled", "false")
         .enableHiveSupport()
         .getOrCreate()
@@ -97,6 +99,7 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
       .parquet(outputPath.toString)
 
     val expected = Report(
+      Metadata("test"),
       FsOutput(s"file:$outputPath", "Parquet"),
       Map(
         "pk" -> List(HiveInput("test.foo", Set("pk"))),
@@ -116,6 +119,7 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
       .parquet(outputPath.toString)
 
     val expected = Report(
+      Metadata("test"),
       FsOutput(s"file:$outputPath", "Parquet"),
       Map(
         "pk" -> List(HiveInput("test.foo", Set("pk", "name"))),
@@ -135,6 +139,7 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
       .parquet(outputPath.toString)
 
     val expected = Report(
+      Metadata("test"),
       FsOutput(s"file:$outputPath", "Parquet"),
       Map(
         "count" -> List(HiveInput("test.foo", Set("name"))),
@@ -157,6 +162,7 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
       .parquet(outputPath.toString)
 
     val expected = Report(
+      Metadata("test"),
       FsOutput(s"file:$outputPath", "Parquet"),
       Map(
         "pk" -> List(HiveInput("test.foo", Set("pk")), HiveInput("test.bar", Set("pk"))),

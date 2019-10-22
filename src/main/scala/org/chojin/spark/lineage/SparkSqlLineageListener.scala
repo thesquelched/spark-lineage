@@ -11,10 +11,13 @@ import org.apache.spark.sql.execution.datasources.{InsertIntoHadoopFsRelationCom
 import org.apache.spark.sql.util.QueryExecutionListener
 import org.chojin.spark.lineage.inputs.{HiveInput, Input}
 import org.chojin.spark.lineage.outputs.FsOutput
-import org.chojin.spark.lineage.reporter.{Metadata, Report, Reporter}
+import org.chojin.spark.lineage.report.{Metadata, Report}
+import org.chojin.spark.lineage.reporter.{KinesisReporter, Reporter}
 
 class SparkSqlLineageListener(reporter: Reporter) extends QueryExecutionListener {
   private lazy val LOGGER = Logger[this.type]
+
+  def this() = this(Config.createInstanceOf("reporter"))
 
   def findSource(attr: AttributeReference, plan: LogicalPlan): Seq[Input] = findSource(attr.toAttribute, plan)
 

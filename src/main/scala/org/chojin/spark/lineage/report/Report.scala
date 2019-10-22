@@ -1,4 +1,4 @@
-package org.chojin.spark.lineage.reporter
+package org.chojin.spark.lineage.report
 
 import org.chojin.spark.lineage.inputs.Input
 import org.chojin.spark.lineage.outputs.Output
