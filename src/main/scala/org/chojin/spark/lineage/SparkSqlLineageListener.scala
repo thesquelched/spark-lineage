@@ -1,11 +1,13 @@
 package org.chojin.spark.lineage
 
 import grizzled.slf4j.Logger
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.io.compress.{CompressionCodecFactory, GzipCodec}
 import org.apache.spark.sql.catalyst.catalog.HiveTableRelation
 import org.apache.spark.sql.catalyst.expressions.{Alias, Attribute, AttributeReference}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.QueryExecution
-import org.apache.spark.sql.execution.datasources.InsertIntoHadoopFsRelationCommand
+import org.apache.spark.sql.execution.datasources.{InsertIntoHadoopFsRelationCommand, LogicalRelation}
 import org.apache.spark.sql.util.QueryExecutionListener
 import org.chojin.spark.lineage.inputs.{HiveInput, Input}
 import org.chojin.spark.lineage.outputs.FsOutput
@@ -19,6 +21,7 @@ class SparkSqlLineageListener(reporter: Reporter) extends QueryExecutionListener
   def findSource(attr: Attribute, plan: LogicalPlan): Seq[Input] = {
     plan.collect {
       case r: HiveTableRelation if r.outputSet.contains(attr) => Seq(HiveInput(r.tableMeta.qualifiedName, Set(attr.name)))
+      case r: LogicalRelation if r.outputSet.contains(attr) => Seq(HiveInput(r.catalogTable.get.qualifiedName, Set(attr.name)))
       case j: Join => {
         val conds = j.condition.map { cond =>
           cond.collect {
@@ -62,6 +65,10 @@ class SparkSqlLineageListener(reporter: Reporter) extends QueryExecutionListener
 
         aggregates ++ groupings
       }
+      case x => {
+        LOGGER.info(s"Found ${x.getClass.getName}")
+        Seq()
+      }
     }.flatten
   }
 
@@ -79,10 +86,12 @@ class SparkSqlLineageListener(reporter: Reporter) extends QueryExecutionListener
               case (HiveInput, table) =>
                 HiveInput(table, value.asInstanceOf[Seq[HiveInput]].map(_.columns).reduce((a, b) => a ++ b))
             }
-          }}
+          }
+          }
 
           field.name -> inputs.toList
-        }})
+        }
+        })
 
         LOGGER.info(s"Inputs: $inputs")
 
