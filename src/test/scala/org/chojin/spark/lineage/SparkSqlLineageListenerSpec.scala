@@ -7,7 +7,7 @@ import org.apache.commons.io.FileUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StringType
-import org.chojin.spark.lineage.inputs.HiveInput
+import org.chojin.spark.lineage.inputs.{Field, HiveInput, How}
 import org.chojin.spark.lineage.outputs.FsOutput
 import org.chojin.spark.lineage.report.{Metadata, Report}
 import org.chojin.spark.lineage.reporter.InMemoryReporter
@@ -25,12 +25,12 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
     super.beforeAll()
 
     spark = SparkSession
-        .builder()
-        .master("local")
-        .appName("test")
-        .config("spark.ui.enabled", "false")
-        .enableHiveSupport()
-        .getOrCreate()
+      .builder()
+      .master("local")
+      .appName("test")
+      .config("spark.ui.enabled", "false")
+      .enableHiveSupport()
+      .getOrCreate()
 
     spark.sql("create database test")
 
@@ -102,8 +102,14 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
       Metadata("test"),
       FsOutput(s"file:$outputPath", "Parquet"),
       Map(
-        "pk" -> List(HiveInput("test.foo", Set("pk"))),
-        "new_value" -> List(HiveInput("test.foo", Set("name", "value")))))
+        "pk" -> List(
+          HiveInput(
+            "test.foo",
+            Set(Field("pk", How.PROJECTION)))),
+        "new_value" -> List(
+          HiveInput(
+            "test.foo",
+            Set(Field("name", How.PROJECTION), Field("value", How.PROJECTION))))))
 
     reporter.getReports() should contain theSameElementsInOrderAs List(expected)
   }
@@ -122,8 +128,19 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
       Metadata("test"),
       FsOutput(s"file:$outputPath", "Parquet"),
       Map(
-        "pk" -> List(HiveInput("test.foo", Set("pk", "name"))),
-        "new_value" -> List(HiveInput("test.foo", Set("pk", "value", "name")))))
+        "pk" -> List(
+          HiveInput(
+            "test.foo",
+            Set(
+              Field("pk", How.PROJECTION),
+              Field("name", How.FILTER)))),
+        "new_value" -> List(
+          HiveInput(
+            "test.foo",
+            Set(
+              Field("pk", How.PROJECTION),
+              Field("value", How.PROJECTION),
+              Field("name", How.FILTER))))))
 
     reporter.getReports() should contain theSameElementsInOrderAs List(expected)
   }
@@ -142,8 +159,33 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
       Metadata("test"),
       FsOutput(s"file:$outputPath", "Parquet"),
       Map(
-        "count" -> List(HiveInput("test.foo", Set("name"))),
-        "name" -> List(HiveInput("test.foo", Set("name")))))
+        "count" -> List(HiveInput("test.foo", Set(Field("name", How.GROUPBY)))),
+        "name" -> List(HiveInput("test.foo", Set(Field("name", How.GROUPBY))))))
+
+    reporter.getReports() should contain theSameElementsInOrderAs List(expected)
+  }
+
+  test("hive aggregate sum") {
+    val ss = spark
+    import ss.implicits._
+
+    spark.table("test.foo")
+      .groupBy('name)
+      .agg(sum('value) as 'sum)
+      .write
+      .parquet(outputPath.toString)
+
+    val expected = Report(
+      Metadata("test"),
+      FsOutput(s"file:$outputPath", "Parquet"),
+      Map(
+        "sum" -> List(
+          HiveInput(
+            "test.foo",
+            Set(
+              Field("name", How.GROUPBY),
+              Field("value", How.AGGREGATE)))),
+        "name" -> List(HiveInput("test.foo", Set(Field("name", How.GROUPBY))))))
 
     reporter.getReports() should contain theSameElementsInOrderAs List(expected)
   }
@@ -165,10 +207,30 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
       Metadata("test"),
       FsOutput(s"file:$outputPath", "Parquet"),
       Map(
-        "pk" -> List(HiveInput("test.foo", Set("pk")), HiveInput("test.bar", Set("pk"))),
-        "name" -> List(HiveInput("test.foo", Set("pk", "name")), HiveInput("test.bar", Set("pk"))),
-        "value" -> List(HiveInput("test.foo", Set("pk", "value")), HiveInput("test.bar", Set("pk"))),
-        "bar_name" -> List(HiveInput("test.foo", Set("pk")), HiveInput("test.bar", Set("pk", "name")))))
+        "pk" -> List(
+          HiveInput("test.foo", Set(Field("pk", How.JOIN), Field("pk", How.PROJECTION))),
+          HiveInput("test.bar", Set(Field("pk", How.JOIN)))),
+        "name" -> List(
+          HiveInput(
+            "test.foo",
+            Set(Field("pk", How.JOIN), Field("name", How.PROJECTION))),
+          HiveInput(
+            "test.bar",
+            Set(Field("pk", How.JOIN)))),
+        "value" -> List(
+          HiveInput(
+            "test.foo",
+            Set(Field("pk", How.JOIN), Field("value", How.PROJECTION))),
+          HiveInput(
+            "test.bar",
+            Set(Field("pk", How.JOIN)))),
+        "bar_name" -> List(
+          HiveInput(
+            "test.foo",
+            Set(Field("pk", How.JOIN))),
+          HiveInput(
+            "test.bar",
+            Set(Field("pk", How.JOIN), Field("name", How.PROJECTION))))))
 
     reporter.getReports() should contain theSameElementsInOrderAs List(expected)
   }

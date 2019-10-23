@@ -1,6 +1,6 @@
 package org.chojin.spark.lineage.report
 
-import org.chojin.spark.lineage.inputs.Input
+import org.chojin.spark.lineage.inputs.{HiveInput, Input}
 import org.chojin.spark.lineage.outputs.Output
 import org.json4s._
 import org.json4s.jackson.Serialization
@@ -20,7 +20,15 @@ case class Report(metadata: Metadata, output: Output, inputs: Map[String, List[I
 
   def prettyPrint = {
     val inputsStr = inputs.map { case (k, v) =>
-      val valStr = v.map({ input => s"      $input"}).mkString("\n")
+      val valStr = v.map({
+        case HiveInput(name, columns, _) => {
+          s"""      HiveInput(
+             |        name: $name
+             |        columns:
+             |          ${columns.mkString("\n          ")}""".stripMargin
+        }
+        case input => s"      $input"
+      }).mkString("\n")
       s"    $k:\n$valStr"
     }.mkString("\n")
 
