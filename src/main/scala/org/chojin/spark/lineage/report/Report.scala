@@ -1,13 +1,14 @@
 package org.chojin.spark.lineage.report
 
-import org.chojin.spark.lineage.inputs.{HiveInput, Input}
+import org.chojin.spark.lineage.inputs.{HiveInput, How, Input}
 import org.chojin.spark.lineage.outputs.Output
 import org.json4s._
+import org.json4s.ext.EnumNameSerializer
 import org.json4s.jackson.Serialization
 import org.json4s.jackson.Serialization.write
 
 case class Report(metadata: Metadata, output: Output, inputs: Map[String, List[Input]]) {
-  implicit val formats = Serialization.formats(NoTypeHints)
+  implicit val formats = Serialization.formats(NoTypeHints) + new EnumNameSerializer(How)
 
   override def equals(other: Any): Boolean = other match {
     case Report(otherMeta, otherOutput, otherInput) => (
