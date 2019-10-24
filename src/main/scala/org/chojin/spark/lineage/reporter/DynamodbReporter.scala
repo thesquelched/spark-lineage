@@ -1,10 +1,11 @@
 package org.chojin.spark.lineage.reporter
 
-import scala.collection.JavaConversions._
-import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClient, AmazonDynamoDBAsyncClientBuilder}
 import com.amazonaws.services.dynamodbv2.model.{AttributeValue, PutItemRequest}
+import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClientBuilder}
 import org.chojin.spark.lineage.outputs.FsOutput
 import org.chojin.spark.lineage.report.Report
+
+import scala.collection.JavaConversions._
 
 case class DynamodbReporter(table: String,
                             region: Option[String],
