@@ -19,8 +19,8 @@ Copy the output from `build/lib/jars` to your cluster.
 Configuration
 -------------
 
-The listener is configured in a file `lineage.properties` that needs to be accessible by the spark driver. Here's an
-example using the `KinesisReporter`:
+The listener is configured via a file, `lineage.properties`, that needs to be in the class path of the spark driver,
+ e.g. by placing it in the spark config directory. Here's an example using the `KinesisReporter`:
 
 ```
 org.chojin.spark.lineage.reporter=org.chojin.spark.lineage.reporters.KinesisReporter
@@ -34,7 +34,6 @@ Then, configure `spark.sql.queryExecutionListeners` to include the `SparkSqlLine
 
 ```bash
 $ spark-shell \
-  --files lineage.properties \
   --jars file:///path/to/spark-lineage-0.0.1-SNAPSHOT.jar \
   --conf spark.sql.queryExecutionListeners=org.chojin.spark.lineage.SparkSqlLineageListener
 ```
