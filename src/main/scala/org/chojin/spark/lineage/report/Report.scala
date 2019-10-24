@@ -44,4 +44,10 @@ case class Report(metadata: Metadata, output: Output, inputs: Map[String, List[I
   def toJson(): String = {
     write(this)
   }
+
+  def toMap(): Map[String, Any] = Map(
+    "metadata" -> metadata.toMap(),
+    "output" -> output.toMap(),
+    "inputs" -> inputs.map({ case (k, v) => k -> v.map(_.toMap()) })
+  )
 }

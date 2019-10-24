@@ -9,6 +9,7 @@ compileScala.sourceCompatibility = 1.8
 
 ext {
   sparkVersion = '2.4.3'
+  awsVersion = '1.11.650'
 }
 
 repositories {
@@ -22,9 +23,12 @@ dependencies {
 
   compileOnly "org.apache.spark:spark-sql_2.11:$sparkVersion"
   compileOnly "org.apache.spark:spark-hive_2.11:$sparkVersion"
-  compileOnly 'com.amazonaws:aws-java-sdk-kinesis:1.11.650'
+
+  compileOnly "com.amazonaws:aws-java-sdk-kinesis:$awsVersion"
+  compileOnly "com.amazonaws:aws-java-sdk-dynamodb:$awsVersion"
 
   testImplementation 'org.scalatest:scalatest_2.11:3.0.8'
+  testImplementation 'org.mockito:mockito-scala-scalatest_2.11:1.6.2'
 }
 
 sourceSets {
