@@ -108,6 +108,9 @@ object QueryParser {
 
         Report(metadata, output, Map(fields: _*))
       }
+      case other =>
+        LOGGER.info(s"Unable to produce report for node ${other.getClass.getSimpleName}")
+        null
     }
   }
 }

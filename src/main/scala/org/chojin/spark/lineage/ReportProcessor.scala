@@ -39,6 +39,12 @@ class ReportProcessor(private val reporters: List[Reporter]) {
   }
 
   def processReport() = {
+    if (reporters.isEmpty) {
+      LOGGER.warn("No lineage reporters found")
+    } else {
+      reporters.foreach(reporter => LOGGER.info(s"Using reporter $reporter"))
+    }
+
     LOGGER.debug("Polling for report to process")
     Option(queue.poll(500L, TimeUnit.MILLISECONDS)).foreach({qe => {
       LOGGER.info("Processing report")
