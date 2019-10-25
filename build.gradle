@@ -2,6 +2,7 @@ plugins {
   id 'scala'
   id 'idea'
   id 'com.github.johnrengelman.shadow' version '5.1.0'
+  id "com.github.maiflai.scalatest" version '0.25'
 }
 
 compileScala.targetCompatibility = 1.8
@@ -29,11 +30,18 @@ dependencies {
 
   testImplementation 'org.scalatest:scalatest_2.11:3.0.8'
   testImplementation 'org.mockito:mockito-scala-scalatest_2.11:1.6.2'
+  testRuntime 'org.pegdown:pegdown:1.6.0'
 }
 
 sourceSets {
   test.compileClasspath += configurations.compileOnly
   test.runtimeClasspath += configurations.compileOnly
+}
+
+test {
+  testLogging {
+    events 'passed', 'skipped', 'failed'
+  }
 }
 
 jar {
