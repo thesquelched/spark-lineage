@@ -9,7 +9,7 @@ import org.chojin.spark.lineage.reporter.Reporter
 class ReportProcessor(private val reporters: List[Reporter]) {
   private lazy val LOGGER = Logger[this.type]
 
-  private val queue = new LinkedBlockingQueue[QueryExecution](100)
+  private val queue = new LinkedBlockingQueue[QueryExecution](1000)
 
   private lazy val thread = new Thread {
     override def run(): Unit = processReports()
@@ -38,16 +38,24 @@ class ReportProcessor(private val reporters: List[Reporter]) {
   }
 
   def processReport() = {
-    Option(queue.poll(1L, TimeUnit.SECONDS)).foreach({qe => {
+    LOGGER.debug("Polling for report to process")
+    Option(queue.poll(500L, TimeUnit.MILLISECONDS)).foreach({qe => {
+      LOGGER.info("Processing report")
+      LOGGER.debug(s"Query execution: $qe")
+
       QueryParser.parseQuery(qe).foreach(report => {
         LOGGER.debug(s"Produced report: ${report.prettyPrint}")
 
         reporters.foreach(reporter => reporter.report(report))
+
+        LOGGER.info("Successfully processed report")
       })
     }})
   }
 
   def processReports(): Unit = {
+    LOGGER.info("Starting report processor thread")
+
     var running = true
 
     while(running) {

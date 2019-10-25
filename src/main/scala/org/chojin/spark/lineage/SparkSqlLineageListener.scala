@@ -18,6 +18,7 @@ case class SparkSqlLineageListener(reporters: List[Reporter], async: Boolean = t
   override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
     LOGGER.debug(s"Logical plan:\n${qe.logical}")
 
+    LOGGER.info("Offering query execution to report processor")
     processor.offer(qe, async)
   }
 
