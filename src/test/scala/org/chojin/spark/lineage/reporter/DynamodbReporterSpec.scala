@@ -8,7 +8,6 @@ import org.chojin.spark.lineage.outputs.FsOutput
 import org.chojin.spark.lineage.report.{Metadata, Report}
 import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.mockito.captor.ArgCaptor
-import org.mockito.scalatest.ResetMocksAfterEachTest
 import org.scalatest.{WordSpec, Matchers => ScalaTestMatchers}
 
 class DynamodbReporterSpec
@@ -77,7 +76,7 @@ class DynamodbReporterSpec
           "path" -> new AttributeValue().withS(report.output.asInstanceOf[FsOutput].path)
         ))
 
-      item("inputs") shouldEqual new AttributeValue().withM(
+      item("fields") shouldEqual new AttributeValue().withM(
         Map(
           "one" -> new AttributeValue().withL(List(
             new AttributeValue().withM(Map(

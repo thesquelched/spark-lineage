@@ -72,7 +72,7 @@ Once evaluated, the following JSON record is produced:
      "appName": "Spark shell"
     },
     "outputKey": "fs-s3://bucket/path/to/report",
-    "inputs": {
+    "fields": {
         "my_flag": [
             {
                 "type": "hive",
@@ -199,7 +199,7 @@ With `json=false`, and using the spark example above, the following DynamoDB rec
         "outputKey": {
             "S": "fs-s3://bucket/path/to/report"
         },
-        "inputs": {
+        "fields": {
             "M": {
                 "my_flag": {
                     "L": [

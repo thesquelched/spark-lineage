@@ -72,7 +72,7 @@ object QueryParser {
     qe.logical.collectFirst {
       case c: InsertIntoHadoopFsRelationCommand => {
         val output = FsOutput(c.outputPath.toString, c.fileFormat.toString)
-        val inputs = c.query.output.map {
+        val fields = c.query.output.map {
           attr => attr -> findSource(attr, c.query, null)
         }.map({ case (field, rawInputs) => {
           val inputs = rawInputs.groupBy {
@@ -94,11 +94,11 @@ object QueryParser {
         }
         })
 
-        LOGGER.info(s"Inputs: $inputs")
+        LOGGER.debug(s"Fields: $fields")
 
         val metadata = Metadata(qe.sparkSession.sparkContext.appName)
 
-        Report(metadata, output, Map(inputs: _*))
+        Report(metadata, output, Map(fields: _*))
       }
     }
   }

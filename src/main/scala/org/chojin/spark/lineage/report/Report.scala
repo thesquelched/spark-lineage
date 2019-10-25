@@ -7,20 +7,20 @@ import org.json4s.ext.EnumNameSerializer
 import org.json4s.jackson.Serialization
 import org.json4s.jackson.Serialization.write
 
-case class Report(metadata: Metadata, output: Output, inputs: Map[String, List[Input]]) {
+case class Report(metadata: Metadata, output: Output, fields: Map[String, List[Input]]) {
   implicit val formats = Serialization.formats(NoTypeHints) + new EnumNameSerializer(How)
 
   override def equals(other: Any): Boolean = other match {
     case Report(otherMeta, otherOutput, otherInput) => (
       metadata == otherMeta
         && output == otherOutput
-        && inputs.mapValues(_.toSet).toSet == otherInput.mapValues(_.toSet).toSet
+        && fields.mapValues(_.toSet).toSet == otherInput.mapValues(_.toSet).toSet
       )
     case _ => false
   }
 
   def prettyPrint = {
-    val inputsStr = inputs.map { case (k, v) =>
+    val fieldsStr = fields.map { case (k, v) =>
       val valStr = v.map({
         case HiveInput(name, columns, _) => {
           s"""      HiveInput(
@@ -28,7 +28,7 @@ case class Report(metadata: Metadata, output: Output, inputs: Map[String, List[I
              |        columns:
              |          ${columns.mkString("\n          ")}""".stripMargin
         }
-        case input => s"      $input"
+        case field => s"      $field"
       }).mkString("\n")
       s"    $k:\n$valStr"
     }.mkString("\n")
@@ -36,8 +36,8 @@ case class Report(metadata: Metadata, output: Output, inputs: Map[String, List[I
     s"""|Report(
         |  metadata: $metadata,
         |  output: $output,
-        |  inputs:
-        |$inputsStr
+        |  fields:
+        |$fieldsStr
         |""".stripMargin
   }
 
@@ -48,6 +48,6 @@ case class Report(metadata: Metadata, output: Output, inputs: Map[String, List[I
   def toMap(): Map[String, Any] = Map(
     "metadata" -> metadata.toMap(),
     "output" -> output.toMap(),
-    "inputs" -> inputs.map({ case (k, v) => k -> v.map(_.toMap()) })
+    "fields" -> fields.map({ case (k, v) => k -> v.map(_.toMap()) })
   )
 }
