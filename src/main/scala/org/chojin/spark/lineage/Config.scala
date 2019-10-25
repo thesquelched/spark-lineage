@@ -11,12 +11,15 @@ object Config {
 
   private final val prefix = "org.chojin.spark.lineage"
   private lazy val properties = {
-    val stream = getClass.getResourceAsStream("/lineage.properties")
-    val props = new Properties()
-    props.load(stream)
-    stream.close()
+    Option(getClass.getResourceAsStream("/lineage.properties"))
+      .map({ stream =>
+        val props = new Properties()
+        props.load(stream)
+        stream.close()
 
-    props
+        props
+      })
+      .getOrElse(new Properties())
   }
 
   def get(name: String): String = properties.getProperty(name)
