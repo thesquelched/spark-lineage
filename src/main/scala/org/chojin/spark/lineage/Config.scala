@@ -47,22 +47,29 @@ object Config {
     val propPrefix = s"$prefix.$suffix"
 
     getList(s"${propPrefix}s").map(className => {
-      def clazz = getClass.getClassLoader.loadClass(className)
-      val configKey = clazz.getSimpleName.replace("Reporter", "").toLowerCase
+      try {
+        def clazz = getClass.getClassLoader.loadClass(className)
+        val configKey = clazz.getSimpleName.replace("Reporter", "").toLowerCase
 
-      val clazzPrefix = s"$propPrefix.$configKey"
+        val clazzPrefix = s"$propPrefix.$configKey"
 
-      val props = properties
-        .toMap
-        .filter({ case (k, _) => k.startsWith(s"$clazzPrefix.")})
-        .map({ case (k, v) => k.substring(clazzPrefix.length + 1) -> v})
+        val props = properties
+          .toMap
+          .filter({ case (k, _) => k.startsWith(s"$clazzPrefix.")})
+          .map({ case (k, v) => k.substring(clazzPrefix.length + 1) -> v})
 
-      LOGGER.info(s"Properties -> $props")
+        LOGGER.info(s"Properties -> $props")
 
-      clazz
-        .getConstructor(classOf[Map[String, String]])
-        .newInstance(props)
-        .asInstanceOf[T]
+        clazz
+          .getConstructor(classOf[Map[String, String]])
+          .newInstance(props)
+          .asInstanceOf[T]
+      } catch {
+        case e: Throwable => {
+          LOGGER.error(s"Unable to create instance of $className", e)
+          throw e
+        }
+      }
     }).toList
   }
 }

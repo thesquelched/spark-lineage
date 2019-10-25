@@ -56,6 +56,9 @@ class ReportProcessor(private val reporters: List[Reporter]) {
   def processReports(): Unit = {
     LOGGER.info("Starting report processor thread")
 
+    val reportersStr = reporters.map(reporter => s"  $reporter").mkString("\n")
+    LOGGER.info(s"Found ${reporters.length} reporters:\n$reportersStr")
+
     var running = true
 
     while(running) {
