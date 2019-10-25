@@ -18,7 +18,7 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
 
   private val tempDir: Path = Files.createTempDirectory("listener-test-")
   private val reporter: InMemoryReporter = InMemoryReporter(compression = None)
-  private val listener: SparkSqlLineageListener = new SparkSqlLineageListener(reporter)
+  private val listener: SparkSqlLineageListener = SparkSqlLineageListener(List(reporter), async = false)
   private val outputPath = tempDir.resolve("test.parquet")
 
   override protected def beforeAll(): Unit = {
