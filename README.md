@@ -5,6 +5,15 @@ Spark SQL listener to report lineage data to a variety of outputs, e.g. Amazon K
 [Spark Atlas Connector](https://github.com/hortonworks-spark/spark-atlas-connector), but intended to be more generic to
 help those who can't or won't use Atlas.
 
+For a Spark SQL query that produces an output (e.g. writes data to a filesystem), the listener produces a message
+containing the following:
+
+* Output details, e.g. type, output location, and format
+* For each (top-level) output field, a list of inputs that contribute to it. Each input contains:
+  * Type, e.g. `hive`
+  * List of input fields that affect the output field, and how they affect it (e.g. via a join, filter, aggregation,
+    projection, etc.)
+* Metadata, e.g. spark application name
 
 Installation
 ------------
@@ -149,10 +158,10 @@ Write an optionally compressed JSON blob to an AWS Kinesis stream.
 
 Options start with the prefix `org.chojin.spark.lineage.reporter.kinesis.`
 
-- `stream` - stream name
-- `region` - region (e.g. `us-east-2`)
-- `shard` - shard/partition to which to write; multiple shards are not supported at this time
-- `compression` - optional compression to apply to the JSON blob; any standard spark compression codec is supported,
+* `stream` - stream name
+* `region` - region (e.g. `us-east-2`)
+* `shard` - shard/partition to which to write; multiple shards are not supported at this time
+* `compression` - optional compression to apply to the JSON blob; any standard spark compression codec is supported,
   e.g. `gzip`, `deflate`
 
 ### DynamoDB
@@ -165,10 +174,10 @@ Write a structured record to an AWS DynamoDB table.
 
 Options start with the prefix `org.chojin.spark.lineage.reporter.dynamodb.`
 
-- `table` - table name
-- `region` - region (e.g. `us-east-2`)
-- `json` - if `true`, write a single attribute, `json`, containing the lineage info as a binary blob
-- `compression` - optional compression to apply to the JSON blob (only if `json=true`; any standard spark compression
+* `table` - table name
+* `region` - region (e.g. `us-east-2`)
+* `json` - if `true`, write a single attribute, `json`, containing the lineage info as a binary blob
+* `compression` - optional compression to apply to the JSON blob (only if `json=true`; any standard spark compression
   codec is supported, e.g. `gzip`, `deflate`
 
 With `json=false`, and using the spark example above, the following DynamoDB record is produced:
