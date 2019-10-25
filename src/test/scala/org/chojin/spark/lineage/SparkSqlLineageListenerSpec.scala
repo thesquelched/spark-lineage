@@ -234,4 +234,38 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
 
     reporter.getReports() should contain theSameElementsInOrderAs List(expected)
   }
+
+  test("hive union") {
+    val ss = spark
+    import ss.implicits._
+
+    Seq("foo", "bar")
+        .map(name => spark.table(s"test.$name").select('pk, concat('name, 'value.cast(StringType)) as 'new_value))
+        .reduce((a, b) => a.union(b))
+        .write
+        .parquet(outputPath.toString)
+
+    val expected = Report(
+      Metadata("test"),
+      FsOutput(s"file:$outputPath", "Parquet"),
+      Map(
+        "pk" -> List(
+          HiveInput(
+            "test.foo",
+            Set(Field("pk", How.PROJECTION))),
+          HiveInput(
+            "test.bar",
+            Set(Field("pk", How.PROJECTION)))
+        ),
+        "new_value" -> List(
+          HiveInput(
+            "test.foo",
+            Set(Field("name", How.PROJECTION), Field("value", How.PROJECTION))),
+          HiveInput(
+            "test.bar",
+            Set(Field("name", How.PROJECTION), Field("value", How.PROJECTION)))
+        )))
+
+    reporter.getReports() should contain theSameElementsInOrderAs List(expected)
+  }
 }

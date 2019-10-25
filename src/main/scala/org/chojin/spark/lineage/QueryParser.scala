@@ -3,7 +3,7 @@ package org.chojin.spark.lineage
 import grizzled.slf4j.Logger
 import org.apache.spark.sql.catalyst.catalog.HiveTableRelation
 import org.apache.spark.sql.catalyst.expressions.{Alias, Attribute, AttributeReference}
-import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, Filter, Join, LogicalPlan, Project}
+import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, Filter, Join, LogicalPlan, Project, Union}
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.execution.datasources.{InsertIntoHadoopFsRelationCommand, LogicalRelation}
 import org.chojin.spark.lineage.inputs.How.How
@@ -18,6 +18,7 @@ object QueryParser {
 
   def findSource(attr: Attribute, plan: LogicalPlan, how: How): Seq[Input] = {
     plan.collect {
+      //case u: Union => u.children.flatMap(child => child.output.flatMap(childAttr => findSource(childAttr, child, how)))
       case r: HiveTableRelation if r.outputSet.contains(attr) => Seq(HiveInput(r.tableMeta.qualifiedName, Set(Field(attr.name, how))))
       case r: LogicalRelation if r.outputSet.contains(attr) => Seq(HiveInput(r.catalogTable.get.qualifiedName, Set(Field(attr.name, how))))
       case j: Join => {
@@ -72,27 +73,35 @@ object QueryParser {
     qe.logical.collectFirst {
       case c: InsertIntoHadoopFsRelationCommand => {
         val output = FsOutput(c.outputPath.toString, c.fileFormat.toString)
-        val fields = c.query.output.map {
-          attr => attr -> findSource(attr, c.query, null)
-        }.map({ case (field, rawInputs) => {
-          val inputs = rawInputs.groupBy {
-            case HiveInput(name, _, _) => (HiveInput, name)
-          }.map { case (key, value) => {
-            key match {
-              case (HiveInput, table) =>
-                HiveInput(
-                  table,
-                  value
-                    .asInstanceOf[Seq[HiveInput]]
-                    .map(_.fields.filter({ col => col.how != null }))
-                    .reduce((a, b) => a ++ b))
-            }
-          }
-          }
 
-          field.name -> inputs.toList
+        val sources = c.query match {
+          case u: Union => u.children.flatMap(child => child.output.map(childAttr => childAttr -> findSource(childAttr, child, null)))
+          case query => query.output.map {
+            attr => attr -> findSource(attr, query, null)
+          }
         }
-        })
+
+        val fields = sources
+          .map{ case (field, rawInputs) =>
+            val inputs = rawInputs
+              .groupBy { case HiveInput(name, _, _) => (HiveInput, name) }
+              .map { case (key, value) =>
+                key match {
+                  case (HiveInput, table) =>
+                    HiveInput(
+                      table,
+                      value
+                        .asInstanceOf[Seq[HiveInput]]
+                        .map(_.fields.filter({ col => col.how != null }))
+                        .reduce((a, b) => a ++ b))
+                }
+              }
+
+            field.name -> inputs.toList
+          }
+          .groupBy { case (k, _) => k }
+          .map { case (k, v) => k -> v.flatMap(_._2).toList }
+          .toSeq
 
         LOGGER.debug(s"Fields: $fields")
 
