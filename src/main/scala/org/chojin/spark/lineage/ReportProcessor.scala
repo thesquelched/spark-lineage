@@ -21,6 +21,7 @@ class ReportProcessor(private val reporters: List[Reporter]) {
 
     Option(Thread.currentThread().getContextClassLoader) match {
       case Some(loader) if getClass.getClassLoader != loader => thread.setContextClassLoader(loader)
+      case _ => LOGGER.debug("Context loader not set")
     }
 
     thread.start()
