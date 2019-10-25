@@ -30,7 +30,7 @@ org.chojin.spark.lineage.reporters=org.chojin.spark.lineage.reporters.KinesisRep
 org.chojin.spark.lineage.reporter.kinesis.stream=my-kinesis-stream
 org.chojin.spark.lineage.reporter.kinesis.region=us-east-1
 org.chojin.spark.lineage.reporter.kinesis.shard=0
-org.chojin.spark.lineage.reporter.kinesis.compression=deflate
+org.chojin.spark.lineage.reporter.kinesis.compression=gzip
 ```
 
 Then, configure `spark.sql.queryExecutionListeners` to include the `SparkSqlLineageListener`:
