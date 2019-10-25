@@ -46,7 +46,7 @@ Then, configure `spark.sql.queryExecutionListeners` to include the `SparkSqlLine
 
 ```bash
 $ spark-shell \
-  --jars file:///path/to/spark-lineage-0.0.1-SNAPSHOT.jar \
+  --jars file:///path/to/spark-lineage-0.0.2-SNAPSHOT.jar \
   --conf spark.sql.queryExecutionListeners=org.chojin.spark.lineage.SparkSqlLineageListener
 ```
 
