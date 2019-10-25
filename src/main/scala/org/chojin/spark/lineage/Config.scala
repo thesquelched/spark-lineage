@@ -49,7 +49,7 @@ object Config {
     getList(s"${propPrefix}s").map(className => {
       try {
         def clazz = getClass.getClassLoader.loadClass(className)
-        val configKey = clazz.getSimpleName.replace("Reporter", "").toLowerCase
+        val configKey = clazz.getSimpleName.replaceFirst("Reporter$", "").toLowerCase
 
         val clazzPrefix = s"$propPrefix.$configKey"
 
