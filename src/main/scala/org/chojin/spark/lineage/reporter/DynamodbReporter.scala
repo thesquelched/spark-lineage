@@ -1,7 +1,7 @@
 package org.chojin.spark.lineage.reporter
 
 import com.amazonaws.services.dynamodbv2.model.{AttributeValue, PutItemRequest}
-import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClientBuilder}
+import com.amazonaws.services.dynamodbv2.{AmazonDynamoDB, AmazonDynamoDBClientBuilder}
 import org.chojin.spark.lineage.outputs.FsOutput
 import org.chojin.spark.lineage.report.Report
 
@@ -10,7 +10,7 @@ import scala.collection.JavaConversions._
 case class DynamodbReporter(table: String,
                             region: Option[String],
                             compression: Option[String],
-                            _client: Option[AmazonDynamoDBAsync] = None) extends Reporter {
+                            _client: Option[AmazonDynamoDB] = None) extends Reporter {
   def this(props: Map[String, String]) = this(
     table=props("table"),
     region=props.get("region"),
@@ -18,8 +18,8 @@ case class DynamodbReporter(table: String,
   )
 
   private lazy val client = _client.getOrElse(region match {
-    case Some(r) => AmazonDynamoDBAsyncClientBuilder.standard().withRegion(r).build()
-    case None => AmazonDynamoDBAsyncClientBuilder.defaultClient()
+    case Some(r) => AmazonDynamoDBClientBuilder.standard().withRegion(r).build()
+    case None => AmazonDynamoDBClientBuilder.defaultClient()
   })
 
   override def report(report: Report): Unit = {
@@ -31,7 +31,7 @@ case class DynamodbReporter(table: String,
       "outputKey" -> new AttributeValue().withS(outputKey)
     ) ++ report.toMap().map({ case (k, v) => k -> makeAttr(v) })
 
-    client.putItemAsync(
+    client.putItem(
       new PutItemRequest()
         .withTableName(table)
         .withItem(item))

@@ -1,7 +1,7 @@
 package org.chojin.spark.lineage.reporter
 
 import scala.collection.JavaConversions._
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
 import com.amazonaws.services.dynamodbv2.model.{AttributeValue, PutItemRequest}
 import org.chojin.spark.lineage.inputs.{Field, HiveInput, How}
 import org.chojin.spark.lineage.outputs.FsOutput
@@ -48,7 +48,7 @@ class DynamodbReporterSpec
 
   "report" should {
     "put a dynamo record" in {
-      val dynamo = mock[AmazonDynamoDBAsync]
+      val dynamo = mock[AmazonDynamoDB]
       val reporter = DynamodbReporter(
         table = "mytable",
         region = None,
@@ -58,7 +58,7 @@ class DynamodbReporterSpec
       reporter.report(report)
 
       val captor = ArgCaptor[PutItemRequest]
-      verify(dynamo).putItemAsync(captor)
+      verify(dynamo).putItem(captor)
 
       captor.value.getTableName shouldEqual "mytable"
 
