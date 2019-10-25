@@ -35,7 +35,7 @@ object Config {
       .filter({ case (k, _) => k.startsWith(s"$propPrefix.")})
       .map({ case (k, v) => k.substring(propPrefix.length + 1) -> v})
 
-    LOGGER.info(s"Properties -> ${props.toMap}")
+    LOGGER.info(s"Properties -> $props")
 
     clazz
       .getConstructor(classOf[Map[String, String]])
@@ -48,10 +48,14 @@ object Config {
 
     getList(s"${propPrefix}s").map(className => {
       def clazz = getClass.getClassLoader.loadClass(className)
+      val configKey = clazz.getSimpleName.replace("Reporter", "").toLowerCase
+
+      val clazzPrefix = s"$propPrefix.$configKey"
+
       val props = properties
         .toMap
-        .filter({ case (k, _) => k.startsWith(s"$propPrefix.")})
-        .map({ case (k, v) => k.substring(propPrefix.length + 1) -> v})
+        .filter({ case (k, _) => k.startsWith(s"$clazzPrefix.")})
+        .map({ case (k, v) => k.substring(clazzPrefix.length + 1) -> v})
 
       LOGGER.info(s"Properties -> $props")
 

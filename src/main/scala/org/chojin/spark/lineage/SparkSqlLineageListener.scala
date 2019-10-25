@@ -9,11 +9,11 @@ case class SparkSqlLineageListener(reporters: List[Reporter], async: Boolean = t
   private lazy val LOGGER = Logger[this.type]
   private lazy val processor = new ReportProcessor(reporters)
 
+  def this() = this(Config.createInstancesOf("reporter"))
+
   if (async) {
     processor.runInBackground()
   }
-
-  def this() = this(Config.createInstancesOf("reporter"))
 
   override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit = {
     LOGGER.debug(s"Logical plan:\n${qe.logical}")
