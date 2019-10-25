@@ -3,7 +3,7 @@ spark-lineage
 
 Spark SQL listener to report lineage data to a variety of outputs, e.g. Amazon Kinesis. Heavily inspired by the
 [Spark Atlas Connector](https://github.com/hortonworks-spark/spark-atlas-connector), but intended to be more generic to
-help those who can't or won't use Atas.
+help those who can't or won't use Atlas.
 
 
 Installation
