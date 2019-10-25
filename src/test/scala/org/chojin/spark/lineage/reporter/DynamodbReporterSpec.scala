@@ -10,12 +10,7 @@ import org.mockito.{ArgumentMatchersSugar, MockitoSugar}
 import org.mockito.captor.ArgCaptor
 import org.scalatest.{WordSpec, Matchers => ScalaTestMatchers}
 
-class DynamodbReporterSpec
-  extends WordSpec
-    with MockitoSugar
-    with ScalaTestMatchers
-    with ArgumentMatchersSugar
-{
+class DynamodbReporterSpec extends WordSpec with MockitoSugar with ScalaTestMatchers with ArgumentMatchersSugar {
   val report = Report(
     Metadata("my-app"),
     FsOutput(

@@ -28,48 +28,42 @@ object Config {
 
   def createInstanceOf[T](suffix: String): T = {
     val propPrefix = s"$prefix.$suffix"
+    val className = get(propPrefix)
 
-    def clazz = getClass.getClassLoader.loadClass(get(propPrefix))
-    val props = properties
-      .toMap
-      .filter({ case (k, _) => k.startsWith(s"$propPrefix.")})
-      .map({ case (k, v) => k.substring(propPrefix.length + 1) -> v})
-
-    LOGGER.info(s"Properties -> $props")
-
-    clazz
-      .getConstructor(classOf[Map[String, String]])
-      .newInstance(props)
-      .asInstanceOf[T]
+    createInstance(className, propPrefix)
   }
 
   def createInstancesOf[T](suffix: String): List[T] = {
     val propPrefix = s"$prefix.$suffix"
 
     getList(s"${propPrefix}s").map(className => {
-      try {
-        def clazz = getClass.getClassLoader.loadClass(className)
-        val configKey = clazz.getSimpleName.replaceFirst("Reporter$", "").toLowerCase
-
-        val clazzPrefix = s"$propPrefix.$configKey"
-
-        val props = properties
-          .toMap
-          .filter({ case (k, _) => k.startsWith(s"$clazzPrefix.")})
-          .map({ case (k, v) => k.substring(clazzPrefix.length + 1) -> v})
-
-        LOGGER.info(s"Properties -> $props")
-
-        clazz
-          .getConstructor(classOf[Map[String, String]])
-          .newInstance(props)
-          .asInstanceOf[T]
-      } catch {
-        case e: Throwable => {
-          LOGGER.error(s"Unable to create instance of $className", e)
-          throw e
-        }
-      }
+      createInstance[T](className, propPrefix)
     }).toList
+  }
+
+  private def createInstance[T](className: String, prefix: String): T = {
+    try {
+      def clazz = getClass.getClassLoader.loadClass(className)
+      val configKey = clazz.getSimpleName.replaceFirst("Reporter$", "").toLowerCase
+
+      val clazzPrefix = s"$prefix.$configKey"
+
+      val props = properties
+        .toMap
+        .filter({ case (k, _) => k.startsWith(s"$clazzPrefix.")})
+        .map({ case (k, v) => k.substring(clazzPrefix.length + 1) -> v})
+
+      LOGGER.debug(s"Properties -> $props")
+
+      clazz
+        .getConstructor(classOf[Map[String, String]])
+        .newInstance(props)
+        .asInstanceOf[T]
+    } catch {
+      case e: Throwable => {
+        LOGGER.error(s"Unable to create instance of $className", e)
+        throw e
+      }
+    }
   }
 }
