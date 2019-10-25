@@ -40,6 +40,98 @@ $ spark-shell \
   --conf spark.sql.queryExecutionListeners=org.chojin.spark.lineage.SparkSqlLineageListener
 ```
 
+JSON Format
+-----------
+
+Consider the following spark example:
+
+```scala
+val foo = spark.table("mydb.foo")
+val bar = spark.table("mydb.bar")
+
+foo
+  .join(bar, foo.col("bar_fk") === bar.col("pk"))
+  .groupBy('my_flag)
+  .agg(sum('amount) as 'amount_sum)
+  .write
+  .mode("overwrite")
+  .parquet("s3:///bucket/path/to/report")
+```
+
+Once evaluated, the following JSON record is produced:
+
+```json
+{
+    "output": {
+        "path": "s3://bucket/path/to/report",
+        "type": "fs",
+        "format": "Parquet"
+    },
+    "metadata": {
+     "appName": "Spark shell"
+    },
+    "outputKey": "fs-s3://bucket/path/to/report",
+    "inputs": {
+        "my_flag": [
+            {
+                "type": "hive",
+                "name": "mydb.foo",
+                "fields": [
+                    {
+                        "name": "bar_fk",
+                        "how": "join"
+                    }
+                ]
+            },
+            {
+                "type": "hive",
+                "name": "mydb.bar",
+                "fields": [
+                    {
+                        "name": "pk",
+                        "how": "join"
+                    },
+                    {
+                        "name": "groupby",
+                        "how": "my_flag"
+                    }
+                ]
+            }
+        ],
+        "amount_sum": [
+            {
+                "type": "hive",
+                "name": "mydb.foo",
+                "fields": [
+                    {
+                        "name": "bar_fk",
+                        "how": "join"
+                    },
+                    {
+                        "name": "amount",
+                        "how": "aggregate"
+                    }
+                ]
+            },
+            {
+                "type": "hive",
+                "name": "mydb.bar",
+                "fields": [
+                    {
+                        "name": "pk",
+                        "how": "join"
+                    },
+                    {
+                        "name": "groupby",
+                        "how": "my_flag"
+                    }
+                ]
+            }
+        ]
+    }
+}
+```
+
 Reporters
 ---------
 
@@ -74,3 +166,178 @@ Options start with the prefix `org.chojin.spark.lineage.reporter.dynamodb.`
 
 - `table` - table name
 - `region` - region (e.g. `us-east-2`)
+- `json` - if `true`, write a single attribute, `json`, containing the lineage info as a binary blob
+- `compression` - optional compression to apply to the JSON blob (only if `json=true`; any standard spark compression
+  codec is supported, e.g. `gzip`, `deflate`
+
+With `json=false`, and using the spark example above, the following DynamoDB record is produced:
+
+```json
+{
+    "Item": {
+        "output": {
+            "M": {
+                "path": {
+                    "S": "s3://bucket/path/to/report"
+                },
+                "type": {
+                    "S": "fs"
+                },
+                "format": {
+                    "S": "Parquet"
+                }
+            }
+        },
+        "metadata": {
+            "M": {
+                "appName": {
+                    "S": "Spark shell"
+                }
+            }
+        },
+        "outputKey": {
+            "S": "fs-s3://bucket/path/to/report"
+        },
+        "inputs": {
+            "M": {
+                "my_flag": {
+                    "L": [
+                        {
+                            "M": {
+                                "fields": {
+                                    "L": [
+                                        {
+                                            "M": {
+                                                "how": {
+                                                    "S": "join"
+                                                },
+                                                "name": {
+                                                    "S": "bar_fk"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                "type": {
+                                    "S": "hive"
+                                },
+                                "name": {
+                                    "S": "mydb.foo"
+                                }
+                            }
+                        },
+                        {
+                            "M": {
+                                "fields": {
+                                    "L": [
+                                        {
+                                            "M": {
+                                                "how": {
+                                                    "S": "join"
+                                                },
+                                                "name": {
+                                                    "S": "pk"
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "M": {
+                                                "how": {
+                                                    "S": "groupby"
+                                                },
+                                                "name": {
+                                                    "S": "my_flag"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                "type": {
+                                    "S": "hive"
+                                },
+                                "name": {
+                                    "S": "mydb.bar"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "amount_sum": {
+                    "L": [
+                        {
+                            "M": {
+                                "fields": {
+                                    "L": [
+                                        {
+                                            "M": {
+                                                "how": {
+                                                    "S": "join"
+                                                },
+                                                "name": {
+                                                    "S": "bar_fk"
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "M": {
+                                                "how": {
+                                                    "S": "aggregate"
+                                                },
+                                                "name": {
+                                                    "S": "amount"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                "type": {
+                                    "S": "hive"
+                                },
+                                "name": {
+                                    "S": "mydb.foo"
+                                }
+                            }
+                        },
+                        {
+                            "M": {
+                                "fields": {
+                                    "L": [
+                                        {
+                                            "M": {
+                                                "how": {
+                                                    "S": "join"
+                                                },
+                                                "name": {
+                                                    "S": "pk"
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "M": {
+                                                "how": {
+                                                    "S": "groupby"
+                                                },
+                                                "name": {
+                                                    "S": "my_flag"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                "type": {
+                                    "S": "hive"
+                                },
+                                "name": {
+                                    "S": "mydb.bar"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    "ScannedCount": 1,
+    "ConsumedCapacity": null
+}
+```
