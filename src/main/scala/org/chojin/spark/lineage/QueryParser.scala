@@ -81,7 +81,7 @@ object QueryParser {
           }
         }
 
-        val fields = sources
+        val fields: Seq[(String, List[Input])] = sources
           .map{ case (field, rawInputs) =>
             val inputs = rawInputs
               .groupBy { case HiveInput(name, _, _) => (HiveInput, name) }
@@ -91,7 +91,6 @@ object QueryParser {
                     HiveInput(
                       table,
                       value
-                        .asInstanceOf[Seq[HiveInput]]
                         .map(_.fields.filter({ col => col.how != null }))
                         .reduce((a, b) => a ++ b))
                 }
