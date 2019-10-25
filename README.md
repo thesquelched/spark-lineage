@@ -15,7 +15,8 @@ Build the jar:
 $ ./gradlew shadowJar
 ```
 
-Copy the output from `build/lib/jars` to your cluster.
+Copy the output from `build/lib/jars` to your cluster. Note that you will need to have the appropriate AWS SDK jars in
+ your spark classpath if you mean to use the associated reporters.
 
 
 Configuration
