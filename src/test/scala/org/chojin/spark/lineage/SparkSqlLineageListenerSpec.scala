@@ -32,6 +32,7 @@ class SparkSqlLineageListenerSpec extends FunSuite with BeforeAndAfterAll with B
       .enableHiveSupport()
       .getOrCreate()
 
+    spark.sql("drop database if exists test cascade")
     spark.sql("create database test")
 
     Seq("foo", "bar", "baz").foreach { name =>
