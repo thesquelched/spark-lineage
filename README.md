@@ -1,6 +1,14 @@
 spark-lineage
 =============
 
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [JSON Format](#json-format)
+- [Reporters](#reporters)
+    * [Kinesis](#kinesis)
+    * [DynamoDB](#dynamodb)
+- [Contributing](#contributing)
+
 [![Build Status](https://travis-ci.com/thesquelched/spark-lineage.svg?branch=master)](https://travis-ci.com/thesquelched/spark-lineage)
 
 Spark SQL listener to report lineage data to a variety of outputs, e.g. Amazon Kinesis. Heavily inspired by the
@@ -353,3 +361,12 @@ With `json=false`, and using the spark example above, the following DynamoDB rec
     "ConsumedCapacity": null
 }
 ```
+
+Contributing
+------------
+
+This is just a side project for me, and I'm more than willing to review pull requests. I just ask that you do the following:
+
+- Add unit tests
+- Try to respect code conventions (e.g. spaces not tabs)
+- Provide a useful commit message
